@@ -1,0 +1,78 @@
+﻿@using AdminPortal.Services
+@inject ITokenProvider TokenProvider
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+
+<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="">AdminPortal</a>
+    <button class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="products" Match="NavLinkMatch.All">
+                        <span aria-hidden="true"></span> Products
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="add-user" Match="NavLinkMatch.All">
+                        <span aria-hidden="true"></span> Add New User
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span aria-hidden="true"></span> Home
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <button class="nav-link btn btn-link" @onclick="Logout">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Logout (@context.User.Identity.Name)
+                    </button>
+                </div>
+
+            </Authorized>
+
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/login">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span> Login Portal
+                    </NavLink>
+                </div>
+
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private string? xsrfToken;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async Task Logout()
+    {
+        var apiAuthProvider = (ApiAuthenticationStateProvider)AuthenticationStateProvider;
+        apiAuthProvider.MarkUserAsLoggedOut();
+
+        // Navigate to the home page after logout
+        Navigation.NavigateTo("/");
+    }
+
+}

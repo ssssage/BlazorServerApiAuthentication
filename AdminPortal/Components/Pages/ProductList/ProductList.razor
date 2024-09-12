@@ -1,0 +1,74 @@
+﻿@page "/products"
+@using AdminPortal.Models
+@inject IHttpClientFactory HttpClientFactory
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject NavigationManager Navigation
+
+<h3>Products</h3>
+
+@if (products == null)
+{
+        <p><em>Loading...</em></p>
+}
+else
+{
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Price</th>
+                    <th>Type</th>
+                    <th>Brand</th>
+                    <th>Main Image</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var product in products)
+            {
+                        <tr>
+                            <td>@product.Name</td>
+                            <td>@product.Description</td>
+                            <td>@product.Price</td>
+                            <td>@product.Type</td>
+                            <td>@product.Brand</td>
+                            <td><img src="@product.MainImageUrl" alt="Main Image" style="width: 50px;" /></td>
+                            <td>
+                                <button @onclick="() => EditProduct(product.Id)">Edit</button>
+                                <button @onclick="() => DeleteProduct(product.Id)">Delete</button>
+                            </td>
+                        </tr>
+            }
+            </tbody>
+        </table>
+        <button @onclick="CreateProduct">Create New Product</button>
+}
+
+@code {
+    private List<Product> products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = HttpClientFactory.CreateClient("APIClient");
+        products = await client.GetFromJsonAsync<List<Product>>("api/product");
+    }
+
+    private void CreateProduct()
+    {
+        Navigation.NavigateTo("/createproduct");
+    }
+
+    private void EditProduct(int id)
+    {
+        Navigation.NavigateTo($"/editproduct/{id}");
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        var client = HttpClientFactory.CreateClient("APIClient");
+        await client.DeleteAsync($"api/product/{id}");
+        products = await client.GetFromJsonAsync<List<Product>>("api/product");
+    }
+}

@@ -1,0 +1,30 @@
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:47247",
+      "sslPort": 44327
+    }
+  },
+  "profiles": {
+    "AdminPortalElixirHand": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "http://*:5003;https://*:7215",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+
+      }
+    }
+  }
+}

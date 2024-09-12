@@ -1,0 +1,76 @@
+﻿@page "/login"
+@using AdminPortal.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@inject ITokenProvider TokenProvider
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<h3>Login</h3>
+
+<EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row">
+        <div class="col-md-4">
+            <section>
+                <div class="form-group row">
+                    <label class="col-sm-4 col-form-label">Email</label>
+                    <div class="col-sm-8">
+                        <InputText @bind-Value="loginModel.Email" Placeholder="Email" />
+                        <ValidationMessage For="()=>loginModel.Email"></ValidationMessage>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-4 col-form-label">Password</label>
+                    <div class="col-sm-8">
+                        <InputText @bind-Value="loginModel.Password" Placeholder="Password" Type="password" />
+                        <ValidationMessage For="()=>loginModel.Password"></ValidationMessage>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <button type="submit" class="btn btn-primary">Log in</button>
+                </div>
+            </section>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+
+    private string loginErrorMessage;
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            var token = await TokenProvider.GetTokenAsync(loginModel.Email, loginModel.Password);
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                var apiAuthProvider = (ApiAuthenticationStateProvider)AuthenticationStateProvider;
+                await apiAuthProvider.MarkUserAsAuthenticated(loginModel.Email, token);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                loginErrorMessage = "Login failed: Invalid token.";
+            }
+        }
+        catch (Exception ex)
+        {
+            loginErrorMessage = ex.Message;  // Display the exception message in the UI
+            Console.WriteLine(loginErrorMessage);
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+}
