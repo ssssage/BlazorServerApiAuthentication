@@ -14,107 +14,118 @@ namespace AdminPortal
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            builder.Services.AddRazorComponents()
-                .AddInteractiveServerComponents();
+            builder.Services.AddRazorComponents() // Register Razor Components services
+                .AddInteractiveServerComponents(); // Add support for interactive server-side rendering
 
-            // Register the configuration section
+            // Register the configuration section for API settings
             builder.Services.Configure<APISettings>(builder.Configuration.GetSection("APISettings"));
 
+            // Register HttpClient for making API calls with a named client 'APIClient'
             builder.Services.AddHttpClient("APIClient")
-                            .ConfigureHttpClient(c => c.BaseAddress = new Uri(builder.Configuration["APISettings:ApiBaseUrl"] ?? ""));
-                      
+                            .ConfigureHttpClient(c =>
+                                c.BaseAddress = new Uri(builder.Configuration["APISettings:ApiBaseUrl"] ?? "")); // Set base URL for HttpClient
+
+            // Register Server-Side Blazor services
             builder.Services.AddServerSideBlazor();
-            // Add authentication services
+
+            // Add JWT-based authentication
             builder.Services.AddAuthentication(options =>
             {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // Set the default authentication scheme to JWT
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;   // Set the default challenge scheme to JWT
             })
-                 .AddJwtBearer(options =>
-                 {
-                     options.TokenValidationParameters = new TokenValidationParameters
-                     {
-                         ValidateIssuer = true,
-                         ValidateAudience = true,
-                         ValidateLifetime = true,
-                         ValidateIssuerSigningKey = true,
-                         ValidIssuer = builder.Configuration["APISettings:ValidIssuer"],
-                         ValidAudience = builder.Configuration["APISettings:ValidAudience"],
-                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["APISettings:SecretKey"]))
-                     };
-                     // Handle unauthenticated requests and redirect to home page
-                     options.Events = new JwtBearerEvents
-                     {
-                         OnChallenge = context =>
-                         {
-                             // Skip the default logic to avoid returning a 401 response
-                             context.HandleResponse();
-
-                             // Redirect unauthenticated users to the home page
-                             context.Response.Redirect("/");
-                             return Task.CompletedTask;
-                         }
-                     };
-                 });
-        
-
-            // Antiforgery configuration
-            builder.Services.AddAntiforgery(options =>
+            .AddJwtBearer(options =>
             {
-                options.HeaderName = "X-CSRF-TOKEN";
+                // Configure JWT token validation parameters
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,  // Ensure the token is issued by a valid authority
+                    ValidateAudience = true, // Ensure the token is intended for a valid audience
+                    ValidateLifetime = true, // Ensure the token has not expired
+                    ValidateIssuerSigningKey = true, // Ensure the token is signed with the correct key
+                    ValidIssuer = builder.Configuration["APISettings:ValidIssuer"], // Issuer from config
+                    ValidAudience = builder.Configuration["APISettings:ValidAudience"], // Audience from config
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["APISettings:SecretKey"])) // Secret key from config
+                };
+
+                // Handle unauthenticated requests and redirect to home page
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = context =>
+                    {
+                        context.HandleResponse(); // Prevent default 401 behavior
+                        context.Response.Redirect("/"); // Redirect to home page for unauthorized access
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
-            // Add authorization services
+            // Register Antiforgery service for CSRF protection
+            builder.Services.AddAntiforgery(options =>
+            {
+                options.HeaderName = "X-CSRF-TOKEN"; // Set custom header for the antiforgery token
+            });
+
+            // Register AuthorizationCore for managing component-level authorization
             builder.Services.AddAuthorizationCore();
+
+            // Register IHttpContextAccessor for accessing the current HTTP context
             builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+            // Register TokenProvider as ITokenProvider for handling tokens
             builder.Services.AddScoped<ITokenProvider, TokenProvider>();
+
+            // Register the custom ApiAuthenticationStateProvider for managing authentication state
             builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
-            builder.Services.AddHttpContextAccessor();
 
-
+            // Build the web application
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // Configure error handling for production environments
             if (!app.Environment.IsDevelopment())
             {
-                app.UseExceptionHandler("/Error");
-                app.UseHsts();
+                app.UseExceptionHandler("/Error"); // Redirect to custom error page
+                app.UseHsts(); // Enable HTTP Strict Transport Security (HSTS)
             }
 
-            app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            app.UseHttpsRedirection(); // Redirect HTTP requests to HTTPS
 
-            app.UseRouting();
+            app.UseStaticFiles(); // Serve static files (CSS, JS, etc.)
 
-            app.UseAuthentication();
-            app.UseAuthorization();
+            app.UseRouting(); // Enable routing in the app
 
-            // Add Antiforgery Middleware
+            app.UseAuthentication(); // Enable JWT authentication middleware
+
+            app.UseAuthorization(); // Enable authorization middleware
+
+            // Add Antiforgery Middleware to validate CSRF tokens on form submissions
             app.UseAntiforgery();
-       
+
+            // Custom fallback to handle non-existent routes
             app.MapFallback(context =>
             {
                 var isAuthenticated = context.User.Identity.IsAuthenticated;
 
                 if (!isAuthenticated)
                 {
-                    // Redirect unauthenticated users to login page if they try to access any non-existing route
+                    // Redirect unauthenticated users to login page for any invalid URL
                     context.Response.Redirect("/login");
                 }
                 else
                 {
-                    // Redirect authenticated users to home page if they try to access non-existing routes
+                    // Redirect authenticated users to home page for invalid URLs
                     context.Response.Redirect("/");
                 }
 
                 return Task.CompletedTask;
             });
 
+            // Map Razor Components with support for interactive server rendering
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
 
+            // Run the application
             app.Run();
         }
     }
-
 }
